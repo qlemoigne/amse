@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/content.dart';
+import 'package:flutter_application_1/contentList.dart';
 
 void main() {
   runApp(const MyApp());
@@ -82,31 +83,12 @@ Contient les contenus
         favorite: false)
   ];
 
+  final PageController _pageController = PageController(initialPage: 0);
+
   static const TextStyle optionStyle =
       TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    // Liste media widget
-
-    Text(
-      'Index 0: Home',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 1: Business',
-      style: optionStyle,
-    ),
-    Text(
-      'Index 2: School',
-      style: optionStyle,
-    ),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  void _onItemTapped(int index) {}
 
   @override
   Widget build(BuildContext context) {
@@ -114,8 +96,24 @@ Contient les contenus
       appBar: AppBar(
         title: const Text('BottomNavigationBar Sample'),
       ),
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (newIndex) {
+          setState(() {
+            _selectedIndex = newIndex;
+          });
+        },
+        children: [
+          ContentList(contents),
+          Text(
+            'Index 1: Business',
+            style: optionStyle,
+          ),
+          Text(
+            'Index 2: School',
+            style: optionStyle,
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
