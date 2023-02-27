@@ -1,7 +1,4 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
-import 'dart:convert';
 
 class Tile {
   String imageURL;
