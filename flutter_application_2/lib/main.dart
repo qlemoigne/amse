@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'exo1.dart' as exo1;
 import 'exo2.dart' as exo2;
 import 'exo4.dart' as exo4;
+import 'exo5.dart' as exo5;
+import 'exo5_b.dart' as exo5_b;
+import 'exo5_c.dart' as exo5_c;
+import 'exo6.dart' as exo6;
+import 'exo7.dart' as exo7;
 
 void main() => runApp(MyApp());
 
@@ -36,6 +41,26 @@ List exos = [
       title: 'Exercice 4',
       subtitle: 'Tuile',
       buildFunc: (context) => exo4.DisplayTileWidget()),
+  Exo(
+      title: 'Exercice 5',
+      subtitle: 'Plateau de tuiles',
+      buildFunc: (context) => exo5.TuilesViewWidget()),
+  Exo(
+      title: 'Exercice 5b',
+      subtitle: 'Plateau de tuiles avec images',
+      buildFunc: (context) => exo5_b.ImagesTuilesViewWidget()),
+  Exo(
+      title: 'Exercice 5c',
+      subtitle: 'Plateau de tuiles avec images resizable',
+      buildFunc: (context) => exo5_c.ResizableImagesTuilesViewWidget()),
+  Exo(
+      title: 'Exercice 6',
+      subtitle: 'Animation tuies',
+      buildFunc: (context) => exo6.PositionedTilesWidget()),
+  Exo(
+      title: 'Exercice 7',
+      subtitle: 'Jeu de Taquin',
+      buildFunc: (context) => exo7.TaquinWidget()),
 ];
 
 class MenuPage extends StatelessWidget {
