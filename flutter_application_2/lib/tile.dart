@@ -87,7 +87,7 @@ Widget createTileWidgetFrom(
   return InkWell(
     child: tile.croppedImageTile(),
     onTap: () {
-      if (visibleLocation.x == gapVisibleLocation.x) {
+      /*if (visibleLocation.x == gapVisibleLocation.x) {
         if ((gapVisibleLocation.y - visibleLocation.y).abs() <= 1) {
           print("OK");
           return;
@@ -99,7 +99,7 @@ Widget createTileWidgetFrom(
           print("OK");
           return;
         }
-      }
+      }*/
       print("PAS OK");
     },
   );
