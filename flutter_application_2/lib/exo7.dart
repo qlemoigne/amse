@@ -4,6 +4,8 @@ import 'dart:math';
 
 import 'package:flutter_application_2/exo6.dart';
 
+import 'package:confetti/confetti.dart';
+
 class TaquinWidget extends StatefulWidget {
   const TaquinWidget({super.key});
 
@@ -73,13 +75,40 @@ class _TaquinWidgetState extends State<TaquinWidget> {
   bool _running = false;
 
   List<_ImageTile> tiles = [];
-  List<int> positions = [];
+
+  List<TileCoord> movesHistory = [];
+
+  int _stepCount = 0;
+
+  // indique si la personne à win
+  bool _hasWon = false;
+
+  late ConfettiController _controllerCenter;
 
   _TaquinWidgetState() {
     generateTileList();
   }
 
-  void moveTile(int relx, int rely) {
+  @override
+  void initState() {
+    super.initState();
+
+    _controllerCenter =
+        ConfettiController(duration: const Duration(seconds: 10));
+  }
+
+  @override
+  void dispose() {
+    _controllerCenter.dispose();
+
+    super.dispose();
+  }
+
+  void computeMinimumStepCount() {
+    List<_ImageTile> currentState = tiles;
+  }
+
+  void moveTile(int relx, int rely, bool preparationState, bool historyMove) {
     if (relx != 0 && rely != 0) {
       print("Mouvement invalide. seule +1, -1, +1, -1");
       return;
@@ -116,6 +145,25 @@ class _TaquinWidgetState extends State<TaquinWidget> {
       tiles[destIndex] = tiles[whiteIndex];
       tiles[whiteIndex] = temp;
 
+      // si on n'est pas en preparation (aka randomise image)
+      if (!preparationState) {
+        // compteur de couts
+
+        // on ajoute à l'historique
+        if (!historyMove) {
+          _stepCount += 1;
+
+          movesHistory.add(TileCoord(x: relx, y: rely));
+        } else {
+          _stepCount -= 1;
+        }
+      }
+
+      if (!preparationState) {
+        // on lance la simulation pour finir le jeu
+        computeMinimumStepCount();
+      }
+
       print("invertion faite de : " +
           whiteIndex.toString() +
           " vers " +
@@ -135,12 +183,28 @@ class _TaquinWidgetState extends State<TaquinWidget> {
     return index;
   }
 
+/**
+ * Annuler le dernier mouvement si c'est possible
+ */
+  void undoLastMove() {
+    if (movesHistory.length <= 0) {
+      return;
+    }
+
+    TileCoord lastMove = movesHistory.removeLast();
+
+    moveTile(-lastMove.x, -lastMove.y, false, true);
+  }
+
   void startGame() {
     if (_running) {
       return;
     }
 
     _running = true;
+    _hasWon = false;
+    _stepCount = 0;
+    movesHistory.clear();
 
     print("starting game");
     generateTileList();
@@ -156,36 +220,34 @@ class _TaquinWidgetState extends State<TaquinWidget> {
 
     for (int i = 0; i < 500; i++) {
       if (random.nextBool()) {
-        moveTile(random.nextBool() ? -1 : 1, 0);
+        moveTile(random.nextBool() ? -1 : 1, 0, true, false);
       } else {
-        moveTile(0, random.nextBool() ? -1 : 1);
+        moveTile(0, random.nextBool() ? -1 : 1, true, false);
       }
     }
 
     setState(() {});
-    //
-    //moveTile(-1, 0);
-    //moveTile(-1, 0);
-    //moveTile(1, 0);
-    //moveTile(1, 0);
-    //positions.shuffle();
-
-    // definir blank id
   }
 
+/**
+ * Renvoit un index à partir d'une coordonnée
+ */
   int getIndexFromCoord(TileCoord coord) {
-    // 0 (1, 1), 1 (2, 1)
     return coord.x + _lineSize * (coord.y - 1) - 1;
   }
 
-  void checkVictory() {
+/**
+ * Indique si un tableau de tiles est complété
+ */
+  bool isFinished(List<_ImageTile> paramTiles) {
     int index = 0;
 
-    bool won = true;
+    bool w = true;
     for (var y = 1; y <= _lineSize; y++) {
       for (var x = 1; x <= _lineSize; x++) {
-        if (tiles[index].originalX != x || tiles[index].originalY != y) {
-          won = false;
+        if (paramTiles[index].originalX != x ||
+            paramTiles[index].originalY != y) {
+          w = false;
           break;
         }
 
@@ -193,11 +255,77 @@ class _TaquinWidgetState extends State<TaquinWidget> {
       }
     }
 
-    if (won) {
+    return w;
+  }
+
+/**
+ * Vérifie si la personne à gagné
+ */
+  void checkVictory() {
+    if (isFinished(tiles)) {
+      _hasWon = true;
       print("VICTOIRE !!!!!");
+      _controllerCenter.play();
+
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (BuildContext context) {
+          return Container(
+            height: 120,
+            color: Colors.blue,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text('Victoire !',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600)),
+                  Text(
+                      'Vous avez gagné en ' +
+                          _stepCount.toString() +
+                          " coups !",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.normal)),
+                  Container(
+                    child: ElevatedButton(
+                      child: const Text('Fermer'),
+                      onPressed: () {
+                        Navigator.pop(context);
+
+                        _controllerCenter.stop();
+
+                        setState(() {
+                          _hasWon = false;
+                          _running = false;
+                        });
+                      },
+                    ),
+                    margin: EdgeInsets.all(10),
+                  )
+                ],
+              ),
+            ),
+          );
+        },
+      ).whenComplete(() {
+        _controllerCenter.stop();
+
+        setState(() {
+          _hasWon = false;
+          _running = false;
+        });
+      });
     }
   }
 
+/**
+ * Renvoit des coordonnées à partir d'un index
+ */
   TileCoord getCoordsFromIndex(int index) {
     int line = 1;
 
@@ -209,16 +337,6 @@ class _TaquinWidgetState extends State<TaquinWidget> {
     }
 
     int col = (index % _lineSize) + 1;
-
-    /*print("LS= " +
-        _lineSize.toString() +
-        "Index : " +
-        index.toString() +
-        " Ligne (y): " +
-        line.toString() +
-        " Col (x): " +
-        col.toString());
-*/
 
     return TileCoord(x: col, y: line);
   }
@@ -256,7 +374,7 @@ class _TaquinWidgetState extends State<TaquinWidget> {
               child: InkWell(
                   child: tile.croppedImageTile(),
                   onTap: () {
-                    moveTile(-relx, -rely);
+                    moveTile(-relx, -rely, false, false);
                     checkVictory();
                   })));
         }
@@ -274,12 +392,6 @@ class _TaquinWidgetState extends State<TaquinWidget> {
     for (var y = 1; y <= _lineSize; y++) {
       for (var x = 1; x <= _lineSize; x++) {
         int index = getIndexFromCoord(TileCoord(x: x, y: y));
-        print("=> " +
-            x.toString() +
-            " , " +
-            y.toString() +
-            " ===> " +
-            index.toString());
 
         double rx = (((x - 1) * (2)) / (_lineSize - 1)) - 1;
         double ry = (((y - 1) * (2)) / (_lineSize - 1)) - 1;
@@ -295,36 +407,88 @@ class _TaquinWidgetState extends State<TaquinWidget> {
     }
   }
 
+  Path drawStar(Size size) {
+    // Method to convert degree to radians
+    double degToRad(double deg) => deg * (pi / 180.0);
+
+    const numberOfPoints = 5;
+    final halfWidth = size.width / 2;
+    final externalRadius = halfWidth;
+    final internalRadius = halfWidth / 2.5;
+    final degreesPerStep = degToRad(360 / numberOfPoints);
+    final halfDegreesPerStep = degreesPerStep / 2;
+    final path = Path();
+    final fullAngle = degToRad(360);
+    path.moveTo(size.width, halfWidth);
+
+    for (double step = 0; step < fullAngle; step += degreesPerStep) {
+      path.lineTo(halfWidth + externalRadius * cos(step),
+          halfWidth + externalRadius * sin(step));
+      path.lineTo(halfWidth + internalRadius * cos(step + halfDegreesPerStep),
+          halfWidth + internalRadius * sin(step + halfDegreesPerStep));
+    }
+    path.close();
+    return path;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
           title: Text('Images GridView'),
         ),
-        body: Column(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Expanded(
-                child: GridView.count(
-              primary: false,
-              padding: const EdgeInsets.all(4),
-              crossAxisSpacing: 4,
-              mainAxisSpacing: 4,
-              crossAxisCount: _lineSize,
-              children: buildTilesWidgetList(),
-            )),
-          ],
-        ),
+        body: Stack(children: [
+          Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Expanded(
+                  child: GridView.count(
+                primary: false,
+                padding: const EdgeInsets.all(4),
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+                crossAxisCount: _lineSize,
+                children: buildTilesWidgetList(),
+              )),
+            ],
+          ),
+          Align(
+            alignment: Alignment.center,
+            child: ConfettiWidget(
+              confettiController: _controllerCenter,
+              blastDirectionality: BlastDirectionality
+                  .explosive, // don't specify a direction, blast randomly
+              shouldLoop:
+                  true, // start again as soon as the animation is finished
+              colors: const [
+                Colors.green,
+                Colors.blue,
+                Colors.pink,
+                Colors.orange,
+                Colors.purple
+              ], // manually specify the colors to be used
+              createParticlePath: drawStar, // define a custom shape/path.
+            ),
+          ),
+        ]),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: FloatingActionButton(
-          onPressed: _running
-              ? null
-              : () {
+        floatingActionButton: !_running
+            ? FloatingActionButton(
+                onPressed: () {
                   startGame();
                 },
-          tooltip: 'Lancer la partie',
-          child: const Icon(Icons.play_arrow),
-        ),
+                tooltip: 'Lancer la partie',
+                child: const Icon(Icons.play_arrow),
+              )
+            : FloatingActionButton(
+                onPressed: movesHistory.length > 0
+                    ? () {
+                        undoLastMove();
+                      }
+                    : null,
+                tooltip: 'Annuler dernier mouvement',
+                child: const Icon(Icons.undo),
+              ),
         bottomNavigationBar: BottomAppBar(
             shape: CircularNotchedRectangle(),
             color: Colors.blue,
@@ -334,31 +498,43 @@ class _TaquinWidgetState extends State<TaquinWidget> {
               child: Row(
                 children: <Widget>[
                   const Spacer(),
-                  IconButton(
-                    tooltip: '-1',
-                    icon: const Icon(Icons.remove),
-                    onPressed: (_lineSize <= 2 || _running)
-                        ? null
-                        : () {
-                            setState(() {
-                              _lineSize -= 1;
-                              generateTileList();
-                            });
-                          },
-                  ),
+                  !_running
+                      ? IconButton(
+                          tooltip: '-1',
+                          icon: const Icon(Icons.remove),
+                          onPressed: (_lineSize <= 2 || _running)
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _lineSize -= 1;
+                                    generateTileList();
+                                  });
+                                },
+                        )
+                      : Container(
+                          margin: const EdgeInsets.all(10),
+                          child: Text(
+                            _stepCount.toString() + " coups",
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white),
+                          )),
                   const Spacer(),
-                  IconButton(
-                    tooltip: '+1',
-                    icon: const Icon(Icons.add),
-                    onPressed: (_lineSize >= 8 || _running)
-                        ? null
-                        : () {
-                            setState(() {
-                              _lineSize += 1;
-                              generateTileList();
-                            });
-                          },
-                  ),
+                  !_running
+                      ? IconButton(
+                          tooltip: '+1',
+                          icon: const Icon(Icons.add),
+                          onPressed: (_lineSize >= 8 || _running)
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _lineSize += 1;
+                                    generateTileList();
+                                  });
+                                },
+                        )
+                      : SizedBox(width: 0, height: 0),
                   const Spacer(),
                 ],
               ),
