@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-// import 'package:Taquin/util.dart';
 import 'dart:math';
-
 import 'package:flutter_application_2/exo6.dart';
-
 import 'package:confetti/confetti.dart';
 
 class TaquinWidget extends StatefulWidget {
@@ -14,8 +11,13 @@ class TaquinWidget extends StatefulWidget {
 }
 
 class _ImageTile {
+  // nom fichier
   String assetName;
+
+  // alignement
   Alignment alignment;
+
+  // nb elem par ligne
   int lineSize;
 
   // position x, y originale
@@ -50,6 +52,9 @@ class _ImageTile {
   }
 }
 
+/*
+* Coordonnées du tile
+*/
 class TileCoord {
   // col
   int x;
@@ -74,16 +79,22 @@ class _TaquinWidgetState extends State<TaquinWidget> {
   // indique si la partie est en cours
   bool _running = false;
 
+  // liste tile
   List<_ImageTile> tiles = [];
 
+  // historique des mouvements
   List<TileCoord> movesHistory = [];
 
+  // nombre de mouvements
   int _stepCount = 0;
 
   // indique si la personne à win
   bool _hasWon = false;
 
   late ConfettiController _controllerCenter;
+
+  // difficulté choisie
+  int _selectedDifficulty = 0;
 
   _TaquinWidgetState() {
     generateTileList();
@@ -218,7 +229,18 @@ class _TaquinWidgetState extends State<TaquinWidget> {
         " y = " +
         tiles[blankIndex].originalY.toString());
 
-    for (int i = 0; i < 500; i++) {
+    // facile
+    int sortCount = 5;
+
+    if (_selectedDifficulty == 1) {
+      sortCount = 20;
+    } else if (_selectedDifficulty == 2) {
+      sortCount = 40;
+    } else if (_selectedDifficulty == 3) {
+      sortCount = 60;
+    }
+
+    for (int i = 0; i < sortCount; i++) {
       if (random.nextBool()) {
         moveTile(random.nextBool() ? -1 : 1, 0, true, false);
       } else {
@@ -450,6 +472,41 @@ class _TaquinWidgetState extends State<TaquinWidget> {
                 crossAxisCount: _lineSize,
                 children: buildTilesWidgetList(),
               )),
+              !_running
+                  ? Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          DropdownButton<int>(
+                            value: _selectedDifficulty,
+                            alignment: Alignment.bottomLeft,
+                            icon: const Icon(Icons.arrow_downward),
+                            elevation: 16,
+                            style: const TextStyle(color: Colors.deepPurple),
+                            underline: Container(
+                              height: 2,
+                              color: Colors.deepPurpleAccent,
+                            ),
+                            onChanged: (int? value) {
+                              setState(() {
+                                _selectedDifficulty = value!;
+                              });
+                            },
+                            items: [
+                              DropdownMenuItem<int>(
+                                  value: 0, child: Text("Facile")),
+                              DropdownMenuItem<int>(
+                                  value: 1, child: Text("Moyen")),
+                              DropdownMenuItem<int>(
+                                  value: 2, child: Text("Difficile")),
+                              DropdownMenuItem<int>(
+                                  value: 3, child: Text("Très Difficile")),
+                            ],
+                          )
+                        ],
+                      ),
+                    )
+                  : SizedBox(width: 0, height: 0),
             ],
           ),
           Align(
@@ -535,7 +592,7 @@ class _TaquinWidgetState extends State<TaquinWidget> {
                                 },
                         )
                       : SizedBox(width: 0, height: 0),
-                  const Spacer(),
+                  const Spacer()
                 ],
               ),
             )));
